@@ -6,9 +6,8 @@ See host_util.go for utility functions
 */
 
 import (
-	"log"
+	"fmt"
 	"net"
-	"os"
 )
 
 const (
@@ -16,32 +15,50 @@ const (
 	CONNTYPE = "tcp"
 ) // TODO: we will want to make this more functional lol
 
-type TipTapHostSocket net.Listener
+func RunHost(port string) error {
+	var err error // this is not needed due to the next line, but is here for clarity
+	hostConn, err := StartHostConnection(port)
+	if err != nil {
+
+	}
+	hostSock := hostConn.listener
+	logger := hostConn.logger
+	for {
+		c, err := hostSock.Accept()
+		if err != nil {
+			logger.Logerr("Error connecting: " + err.Error())
+			break
+		}
+		fmt.Println("Client connected.")
+		fmt.Println("Client " + c.RemoteAddr().String() + " connected.")
+
+		go connectionLoop(c, &logger)
+	}
+
+	return err
+}
 
 // Warning! We need an intelligent system for closing the socket when we panic.
 // likely a `defer DeleteHost(host)`?
-func CreateHost(port string) (TipTapHostSocket, error) {
+func StartHostConnection(port string) (TipTapHost, error) {
+	host := makeEmptyHost()
+	logger := host.logger
 	l, err := net.Listen(CONNTYPE, combineIPAndPort(CONNHOST, port))
 	if err != nil {
-		logger := log.Default()
-		logger.SetOutput(os.Stderr)
-		logger.Println("Failed to create host socket: " + err.Error())
-		return nil, err
+		logger.Logerr("Failed to create host socket: " + err.Error())
+		return host, err
 	}
-	return l, nil
+
+	host.listener = l
+	return host, nil
 }
 
-func DeleteHost(host TipTapHostSocket) bool {
-	err := host.Close()
+func StopHostConnection(host TipTapHost) bool {
+	logger := host.logger
+	err := host.listener.Close()
 	if err != nil {
-		logger := log.Default()
-		logger.SetOutput(os.Stderr)
-		logger.Println("Failed to delete host socket: " + err.Error())
+		logger.Logerr("Failed to delete host socket: " + err.Error())
 		return false
 	}
 	return true
-}
-
-func ReadHost(host TipTapHostSocket) (string, bool) {
-	return "", false
 }
