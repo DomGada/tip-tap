@@ -6,7 +6,6 @@ See host_util.go for utility functions
 */
 
 import (
-	"fmt"
 	"net"
 )
 
@@ -29,8 +28,8 @@ func RunHost(port string) error {
 			logger.Logerr("Error connecting: " + err.Error())
 			break
 		}
-		fmt.Println("Client connected.")
-		fmt.Println("Client " + c.RemoteAddr().String() + " connected.")
+		logger.Loginfo("Client connected.")
+		logger.Loginfo("Client " + c.RemoteAddr().String() + " connected.")
 
 		go connectionLoop(c, &logger)
 	}
