@@ -14,15 +14,17 @@ const (
 	CONNTYPE = "tcp"
 ) // TODO: we will want to make this more functional lol
 
+
+
 func RunHost(port string) error {
 	var err error // this is not needed due to the next line, but is here for clarity
 	hostConn, err := StartHostConnection(port)
+	logger := hostConn.logger
 	if err != nil {
-		err = "Unable to form connection with host, exiting..."
+		logger.Logerr("Unable to form connection with host, " + err.Error())
 		return err
 	}
 	hostSock := hostConn.listener
-	logger := hostConn.logger
 	for {
 		c, err := hostSock.Accept()
 		if err != nil {
