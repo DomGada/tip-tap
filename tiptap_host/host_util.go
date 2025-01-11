@@ -11,7 +11,7 @@ func makeEmptyHost() TipTapHost {
 
 func connectionLoop(conn net.Conn, logger *Logger) {
 	exited := false
-	for exited == true {
+	for exited == false {
 		exited = readConnection(conn, logger)
 		loopMetrics(conn)
 	}

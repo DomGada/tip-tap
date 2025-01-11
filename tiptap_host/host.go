@@ -18,7 +18,8 @@ func RunHost(port string) error {
 	var err error // this is not needed due to the next line, but is here for clarity
 	hostConn, err := StartHostConnection(port)
 	if err != nil {
-
+		err = "Unable to form connection with host, exiting..."
+		return err
 	}
 	hostSock := hostConn.listener
 	logger := hostConn.logger
