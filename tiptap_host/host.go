@@ -7,6 +7,7 @@ See host_util.go for utility functions
 
 import (
 	"net"
+	"fmt"
 )
 
 const (
@@ -26,6 +27,7 @@ func RunHost(port string) error {
 	}
 	hostSock := hostConn.listener
 	for {
+		fmt.Printf("Waiting for additional clients to connect...\n")
 		c, err := hostSock.Accept()
 		if err != nil {
 			logger.Logerr("Error connecting: " + err.Error())

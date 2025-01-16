@@ -3,6 +3,11 @@ package tiptaphost
 import (
 	"bufio"
 	"net"
+	"sync"
+)
+var (
+	connections []net.Conn
+	connMutex sync.Mutex
 )
 
 func makeEmptyHost() TipTapHost {
@@ -10,38 +15,74 @@ func makeEmptyHost() TipTapHost {
 }
 
 func connectionLoop(conn net.Conn, logger *Logger) {
+	// Add our new conn to list
+	addConnection(conn)
+	defer removeConnection(conn)
+	sendDirectMessage(conn, "Welcome to the TipTap Host!")
+	sendDirectMessage(conn, "Please enter your display name :3")
+
+	username, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		logger.Logerr("Error reading username: " + err.Error())
+		conn.Close()
+		return
+	}
+	logger.Loginfo("Client username: " + username)
 	exited := false
 	for exited == false {
-		exited = readConnection(conn, logger)
+		exited = readConnection(conn, logger, username)
 		loopMetrics(conn)
 	}
 }
-// We need to store a record of what the client sent.
-// When we enter our read connection we want to verify
-// that this is indeed what our client.
-// Do we need that validation?
-func readConnection(conn net.Conn, logger *Logger) bool {
+
+func readConnection(conn net.Conn, logger *Logger,username string) bool {
 	buffer, err := bufio.NewReader(conn).ReadBytes('\n')
 	if err != nil {
-		logger.Logerr("Client left.")
+		logger.Logerr(username + " left.")
 		conn.Close()
 		return true
 	}
 
-	logger.Loginfo("Client message: " + string(buffer[:len(buffer)-1]))
-	// TODO: Replace below with go routine of seperate connection itteration function.
-	conn.Write(buffer)
+	userMessage :=  username + ": " + string(buffer[:len(buffer)-1])
+
+	logger.Loginfo(userMessage)
+	broadcastMessage(conn,userMessage)
 	return false
 }
 
-func (conns []net.Conn, msgs []string ){
-	// TODO: for all the fucking connections, YEAT THE THE MESSAGE 
-	// Yeat the msgs bro
-
-	// PSUEDO
-	// FOR CONN IN CONS POP QUEUE SEND SAME MESSAGE TO ALL CONS, and MOVE DOWN THE QUEUE
-
+func addConnection(conn net.Conn) {
+	connMutex.Lock()
+	connections = append(connections, conn)
+	connMutex.Unlock()
 }
+
+func removeConnection(conn net.Conn) {
+	connMutex.Lock()
+	defer connMutex.Unlock()
+	for i, c := range connections {
+		if c == conn{
+			connections = append(connections[:i], connections[i+1:]...)
+			break
+		}
+	}
+	conn.Close()
+}
+
+func broadcastMessage(sender net.Conn, msg string){
+	connMutex.Lock()
+	defer connMutex.Unlock()
+	
+	for _, c := range connections{
+		if c != sender{
+			sendDirectMessage(c,msg)
+		}
+	}
+}
+
+func sendDirectMessage(conn net.Conn, msg string) {
+	conn.Write([]byte(msg + "\n"))
+}
+
 func loopMetrics(conn net.Conn) {
 	// TODO: if we want to store info like "you've sent X messages so far" or whatever
 }
