@@ -1,4 +1,4 @@
-package tiptaphost
+package host
 
 /*
 This defines our public library functions.
@@ -6,16 +6,14 @@ See host_util.go for utility functions
 */
 
 import (
-	"net"
 	"fmt"
+	"net"
 )
 
 const (
 	CONNHOST = "localhost"
 	CONNTYPE = "tcp"
 ) // TODO: we will want to make this more functional lol
-
-
 
 func RunHost(port string) error {
 	var err error // this is not needed due to the next line, but is here for clarity

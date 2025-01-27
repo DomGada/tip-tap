@@ -1,10 +1,9 @@
-package tiptaphost
+package host
 
 import "testing"
 
+func TestHostInputValid(t *testing.T) {
 
-func TestHostInputValid(t *testing.T){
-	
 }
 
 func TestCreateHost(t *testing.T) {

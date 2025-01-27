@@ -1,20 +1,23 @@
-package tiptaphost
+package host
 
 import (
 	"bufio"
 	"net"
 	"sync"
+
+	"github.com/DomGada/Tip-Tap/shared"
 )
+
 var (
 	connections []net.Conn
-	connMutex sync.Mutex
+	connMutex   sync.Mutex
 )
 
 func makeEmptyHost() TipTapHost {
-	return TipTapHost{nil, Logger{}}
+	return TipTapHost{nil, shared.Logger{}}
 }
 
-func connectionLoop(conn net.Conn, logger *Logger) {
+func connectionLoop(conn net.Conn, logger *shared.Logger) {
 	// Add our new conn to list
 	addConnection(conn)
 	defer removeConnection(conn)
@@ -35,7 +38,7 @@ func connectionLoop(conn net.Conn, logger *Logger) {
 	}
 }
 
-func readConnection(conn net.Conn, logger *Logger,username string) bool {
+func readConnection(conn net.Conn, logger *shared.Logger, username string) bool {
 	buffer, err := bufio.NewReader(conn).ReadBytes('\n')
 	if err != nil {
 		logger.Logerr(username + " left.")
@@ -43,10 +46,10 @@ func readConnection(conn net.Conn, logger *Logger,username string) bool {
 		return true
 	}
 
-	userMessage :=  username + ": " + string(buffer[:len(buffer)-1])
+	userMessage := username + ": " + string(buffer[:len(buffer)-1])
 
 	logger.Loginfo(userMessage)
-	broadcastMessage(conn,userMessage)
+	broadcastMessage(conn, userMessage)
 	return false
 }
 
@@ -60,7 +63,7 @@ func removeConnection(conn net.Conn) {
 	connMutex.Lock()
 	defer connMutex.Unlock()
 	for i, c := range connections {
-		if c == conn{
+		if c == conn {
 			connections = append(connections[:i], connections[i+1:]...)
 			break
 		}
@@ -68,13 +71,13 @@ func removeConnection(conn net.Conn) {
 	conn.Close()
 }
 
-func broadcastMessage(sender net.Conn, msg string){
+func broadcastMessage(sender net.Conn, msg string) {
 	connMutex.Lock()
 	defer connMutex.Unlock()
-	
-	for _, c := range connections{
-		if c != sender{
-			sendDirectMessage(c,msg)
+
+	for _, c := range connections {
+		if c != sender {
+			sendDirectMessage(c, msg)
 		}
 	}
 }

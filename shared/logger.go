@@ -1,19 +1,13 @@
-package tiptaphost
+package shared
 
 import (
 	"log"
-	"net"
 	"os"
 )
 
 type Logger struct {
 	_stdout *log.Logger
 	_stderr *log.Logger
-}
-
-type TipTapHost struct {
-	listener net.Listener
-	logger   Logger
 }
 
 func (logger *Logger) Loginfo(msg string) {
