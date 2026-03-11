@@ -21,25 +21,29 @@ func connectionLoop(conn net.Conn, logger *shared.Logger) {
 	// Add our new conn to list
 	addConnection(conn)
 	defer removeConnection(conn)
-	sendDirectMessage(conn, "Welcome to the TipTap Host!")
-	sendDirectMessage(conn, "Please enter your display name :3")
+	sendDirectMessageLine(conn, "Welcome to the TipTap Host!")
+	sendDirectMessageLine(conn, "Please enter your display name :3")
 
-	username, err := bufio.NewReader(conn).ReadString('\n')
+	reader := bufio.NewReader(conn)
+	username, err := reader.ReadString('\n')
 	if err != nil {
 		logger.Logerr("Error reading username: " + err.Error())
 		conn.Close()
 		return
 	}
+	username = username[:len(username)-1] // trim trailing newline
 	logger.Loginfo("Client username: " + username)
+	broadcastMessage(conn, "** "+username+" has joined the chat **")
 	exited := false
-	for exited == false {
-		exited = readConnection(conn, logger, username)
+	for !exited {
+		exited = readConnection(conn, reader, logger, username)
 		loopMetrics(conn)
 	}
+	broadcastMessage(conn, "** "+username+" has left the chat **")
 }
 
-func readConnection(conn net.Conn, logger *shared.Logger, username string) bool {
-	buffer, err := bufio.NewReader(conn).ReadBytes('\n')
+func readConnection(conn net.Conn, reader *bufio.Reader, logger *shared.Logger, username string) bool {
+	buffer, err := reader.ReadBytes('\n')
 	if err != nil {
 		logger.Logerr(username + " left.")
 		conn.Close()
@@ -71,19 +75,33 @@ func removeConnection(conn net.Conn) {
 	conn.Close()
 }
 
+func closeAllConnections() {
+	connMutex.Lock()
+	defer connMutex.Unlock()
+	for _, c := range connections {
+		sendDirectMessageLine(c, "** Server is shutting down **")
+		c.Close()
+	}
+	connections = nil
+}
+
 func broadcastMessage(sender net.Conn, msg string) {
 	connMutex.Lock()
 	defer connMutex.Unlock()
 
 	for _, c := range connections {
 		if c != sender {
-			sendDirectMessage(c, msg)
+			sendDirectMessageLine(c, msg)
 		}
 	}
 }
 
 func sendDirectMessage(conn net.Conn, msg string) {
-	conn.Write([]byte(msg + "\n"))
+	conn.Write([]byte(msg))
+}
+
+func sendDirectMessageLine(conn net.Conn, msg string) {
+	sendDirectMessage(conn, msg+"\n")
 }
 
 func loopMetrics(conn net.Conn) {
