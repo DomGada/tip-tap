@@ -6,38 +6,55 @@ See host_util.go for utility functions
 */
 
 import (
+	"context"
 	"fmt"
 	"net"
+
+	"github.com/DomGada/Tip-Tap/discovery"
 )
 
 const (
-	CONNHOST = "localhost"
+	CONNHOST = ""
 	CONNTYPE = "tcp"
 ) // TODO: we will want to make this more functional lol
 
-func RunHost(port string) error {
-	var err error // this is not needed due to the next line, but is here for clarity
+func RunHost(ctx context.Context, port string) error {
 	hostConn, err := StartHostConnection(port)
-	logger := hostConn.logger
 	if err != nil {
-		logger.Logerr("Unable to form connection with host, " + err.Error())
-		return err
+		return fmt.Errorf("unable to form connection with host: %w", err)
 	}
+	logger := hostConn.logger
 	hostSock := hostConn.listener
+	defer hostSock.Close()
+
+	// Start UDP discovery broadcast
+	go discovery.AnnounceHost(ctx, port)
+
+	// Close listener when context is cancelled
+	go func() {
+		<-ctx.Done()
+		hostSock.Close()
+	}()
+
 	for {
 		fmt.Printf("Waiting for additional clients to connect...\n")
 		c, err := hostSock.Accept()
 		if err != nil {
-			logger.Logerr("Error connecting: " + err.Error())
-			break
+			select {
+			case <-ctx.Done():
+				logger.Loginfo("Host shutting down.")
+				closeAllConnections()
+				return nil
+			default:
+				logger.Logerr("Error connecting: " + err.Error())
+				return err
+			}
 		}
 		logger.Loginfo("Client connected.")
 		logger.Loginfo("Client " + c.RemoteAddr().String() + " connected.")
 
 		go connectionLoop(c, &logger)
 	}
-
-	return err
 }
 
 // Warning! We need an intelligent system for closing the socket when we panic.
